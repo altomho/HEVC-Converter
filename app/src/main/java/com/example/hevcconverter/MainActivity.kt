@@ -36,7 +36,11 @@ import androidx.media3.common.MediaItem
 import androidx.media3.common.MimeTypes
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.PlayerView
-import androidx.media3.transformer.*
+import androidx.media3.transformer.Composition
+import androidx.media3.transformer.EditedMediaItem
+import androidx.media3.transformer.ExportException
+import androidx.media3.transformer.ExportResult
+import androidx.media3.transformer.Transformer
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -92,14 +96,13 @@ fun ConverterScreen() {
     var previewUri by remember { mutableStateOf<Uri?>(null) }
     var pendingDeleteSourceUri by remember { mutableStateOf<Uri?>(null) }
 
-    // Launcher pour demander la suppression sécurisée d'un fichier source via MediaStore
     val deleteLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartIntentSenderForResult()
     ) { result ->
         if (result.resultCode == Activity.RESULT_OK) {
             pendingDeleteSourceUri?.let { uri ->
                 videoList = videoList.filterNot { it.uri == uri }
-                Toast.makeText(context, "Fichier source supprimé avec succès", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, "Fichier source supprimé", Toast.LENGTH_SHORT).show()
             }
         }
         pendingDeleteSourceUri = null
@@ -208,7 +211,6 @@ fun ConverterScreen() {
         ) {
             Text(statusText, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.secondary)
 
-            // Barre d'actions & Tri
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -305,7 +307,6 @@ fun ConverterScreen() {
 
                             Spacer(Modifier.height(8.dp))
 
-                            // État / Comparaison
                             if (video.targetUri != null) {
                                 val savedMb = video.sizeMb - (video.targetSizeMb ?: 0.0)
                                 val percent = if (video.sizeMb > 0) (savedMb / video.sizeMb * 100).toInt() else 0
@@ -329,7 +330,7 @@ fun ConverterScreen() {
                                                     }
                                                 }
                                             ) {
-                                                Icon(Icons.Default.Delete, contentDescription = "Remplacer/Supprimer source", tint = MaterialTheme.colorScheme.error)
+                                                Icon(Icons.Default.Delete, contentDescription = "Supprimer source", tint = MaterialTheme.colorScheme.error)
                                             }
                                         }
                                     }
@@ -355,7 +356,6 @@ fun ConverterScreen() {
         }
     }
 
-    // Modal Lecteur Vidéo Intégré
     previewUri?.let { uri ->
         Dialog(onDismissRequest = { previewUri = null }) {
             Surface(
